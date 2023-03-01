@@ -33,7 +33,7 @@
 import torch 
 import torch.nn as nn
 import torch.nn.functional as F
-import math
+
 
 def conv(in_planes, out_planes, kernel_size=3, stride=2, padding=1, dilation=1, bn_layer=False, bias=True):
     if bn_layer:
@@ -93,20 +93,21 @@ class VOFlowRes(nn.Module):
         self.layer3 = self._make_layer(BasicBlock, outputnums[4], blocknums[4], 2, 1, 1) # 10 x 7
         self.layer4 = self._make_layer(BasicBlock, outputnums[5], blocknums[5], 2, 1, 1) # 5 x 4
         self.layer5 = self._make_layer(BasicBlock, outputnums[6], blocknums[6], 2, 1, 1) # 3 x 2
-        fcnum = outputnums[6] * 6
+        # fcnum = outputnums[6] * 6
+        # self.fc = linear(fcnum, 256)
+        # fc1_trans = linear(fcnum, 128)
+        # fc2_trans = linear(128,32)
+        # fc3_trans = nn.Linear(32,3)
 
-        fc1_trans = linear(fcnum, 128)
-        fc2_trans = linear(128,32)
-        fc3_trans = nn.Linear(32,3)
-
-        fc1_rot = linear(fcnum, 128)
-        fc2_rot = linear(128,32)
-        fc3_rot = nn.Linear(32,3)
+        # fc1_rot = linear(fcnum, 128)
+        # fc2_rot = linear(128,32)
+        # fc3_rot = nn.Linear(32,3)
 
 
-        self.voflow_trans = nn.Sequential(fc1_trans, fc2_trans, fc3_trans)
-        self.voflow_rot = nn.Sequential(fc1_rot, fc2_rot, fc3_rot)
 
+        # self.voflow_trans = nn.Sequential(fc1_trans, fc2_trans, fc3_trans)
+        # self.voflow_rot = nn.Sequential(fc1_rot, fc2_rot, fc3_rot)
+        
 
     def _make_layer(self, block, planes, blocks, stride, pad, dilation):
         downsample = None
@@ -129,8 +130,9 @@ class VOFlowRes(nn.Module):
         x = self.layer3(x)
         x = self.layer4(x)
         x = self.layer5(x)
-        
-        x = x.view(x.shape[0], -1)
-        x_trans = self.voflow_trans(x)
-        x_rot = self.voflow_rot(x)
-        return torch.cat((x_trans, x_rot), dim=1)
+        # x = self.fc(x)
+        # x = x.view(x.shape[0], -1)
+        # x_trans = self.voflow_trans(x)
+        # x_rot = self.voflow_rot(x)
+        # return torch.cat((x_trans, x_rot), dim=1)
+        return x

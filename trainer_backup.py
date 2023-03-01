@@ -126,7 +126,7 @@ class _TrainAssistant(object):
                                gt_poses[:, 0].inverse().cuda(),
                                prev_state.cuda(), None,
                                T_imu_cam.cuda(),
-                               intrinsic_layer.cuda())
+                               intrinsic_layer)
                                
         if par.enable_ekf and not par.gaussian_pdf_loss:
             # note that the estimated poses are already inversed

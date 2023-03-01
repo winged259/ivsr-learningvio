@@ -10,7 +10,7 @@ from eval import gen_trajectory, plot_trajectory, kitti_eval, np_traj_to_kitti, 
 
 arg_parser = argparse.ArgumentParser(description='Train E2E VIO')
 arg_parser.add_argument('--description', type=str, help="Description of this training run")
-arg_parser.add_argument('--gpu_id', type=int, nargs="+", help="select the GPU to perform training on")
+arg_parser.add_argument('--gpu_id', type=int, nargs="+", help="select the GPU to perform training on", default = 0)
 arg_parser.add_argument('--run_eval_only', default=False, action='store_true',
                         help="Only run evaluation in current working directory")
 arg_parser.add_argument('--resume_model_from', type=str, help="path of model state to resume from")

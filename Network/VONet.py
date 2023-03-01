@@ -35,30 +35,105 @@ import torch.nn as nn
 import torch.nn.functional as F
 from .PWC import PWCDCNet as FlowNet
 from .VOFlowNet import VOFlowRes as FlowPoseNet
-
+from params import par
+import numpy as np
+from torch.autograd import Variable
+from torch.nn.init import kaiming_normal_, orthogonal_
+from model import IMUKalmanFilter
 class VONet(nn.Module):
-    def __init__(self):
+    def __init__(self, imsize1, imsize2, batchNorm):
         super(VONet, self).__init__()
 
         self.flowNet     = FlowNet()
         self.flowPoseNet = FlowPoseNet()
+
+        tmp = Variable(torch.zeros(1, 6, imsize1, imsize2))
+        tmp = self.cnn(tmp)
+
+        # RNN
+        if par.hybrid_recurrency and par.enable_ekf:
+            lstm_input_size = IMUKalmanFilter.STATE_VECTOR_DIM ** 2 + IMUKalmanFilter.STATE_VECTOR_DIM
+        else:
+            lstm_input_size = 0
+        self.rnn = nn.LSTM(
+                input_size=int(np.prod(tmp.size())) + lstm_input_size,
+                hidden_size=par.rnn_hidden_size,
+                num_layers=par.rnn_num_layers,
+                dropout=par.rnn_dropout_between,
+                batch_first=True)
+        self.rnn_drop_out = nn.Dropout(par.rnn_dropout_out)
+        self.linear = nn.Linear(in_features=par.rnn_hidden_size, out_features=12)
+
+        # Initilization
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d) or isinstance(m, nn.Linear):
+                kaiming_normal_(m.weight.data)
+                if m.bias is not None:
+                    m.bias.data.zero_()
+            elif isinstance(m, nn.LSTM):
+                # layer 1
+                kaiming_normal_(m.weight_ih_l0)  # orthogonal_(m.weight_ih_l0)
+                kaiming_normal_(m.weight_hh_l0)
+                m.bias_ih_l0.data.zero_()
+                m.bias_hh_l0.data.zero_()
+                # Set forget gate bias to 1 (remember)
+                n = m.bias_hh_l0.size(0)
+                start, end = n // 4, n // 2
+                m.bias_hh_l0.data[start:end].fill_(1.)
+
+                # layer 2
+                kaiming_normal_(m.weight_ih_l1)  # orthogonal_(m.weight_ih_l1)
+                kaiming_normal_(m.weight_hh_l1)
+                m.bias_ih_l1.data.zero_()
+                m.bias_hh_l1.data.zero_()
+                n = m.bias_hh_l1.size(0)
+                start, end = n // 4, n // 2
+                m.bias_hh_l1.data[start:end].fill_(1.)
+
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
     def stack_img(self, images):
         # images: (batch, seq_len, channel, width, height)
-        x = images
         #stack img to 2 consecutive img
-        x = torch.cat((x[:, :-1], x[:, 1:]), dim=2)
-        # batch_size = x.size(0)
-        # seq_len = x.size(1)
-        # x = x.view(batch_size * seq_len, x.size(2), x.size(3), x.size(4))
+        images = torch.cat((images[:, :-1], images[:, 1:]), dim=2)
+        batch_size = images.size(0)
+        seq_len = images.size(1)
+        images = images.view(batch_size * seq_len, images.size(2), images.size(3), images.size(4))
 
-        # x = x.view(batch_size, seq_len, -1)
-        return x
+        x = self.forward(images)
+        
+        x = x.view(batch_size, seq_len, -1)
+        return images
+
+    def forward_one_ts(self, feature_vector, lstm_init_state=None):
+
+        # lstm_init_state has the dimension of (# batch, 2 (hidden/cell), lstm layers, lstm hidden size)
+        if lstm_init_state is not None:
+            hidden_state = lstm_init_state[:, 0, :, :].permute(1, 0, 2).contiguous()
+            cell_state = lstm_init_state[:, 1, :, :].permute(1, 0, 2).contiguous()
+            lstm_init_state = (hidden_state, cell_state,)
+
+        # RNN
+        # lstm_state is (hidden state, cell state,)
+        # each hidden/cell state has the shape (lstm layers, batch size, lstm hidden size)
+
+        out, lstm_state = self.rnn(feature_vector.unsqueeze(1), lstm_init_state)
+        out = self.rnn_drop_out(out)
+        out = self.linear(out)
+
+        # rearrange the shape back to (# batch, 2 (hidden/cell), lstm layers, lstm hidden size)
+        lstm_state = torch.stack(lstm_state, dim=0)
+        lstm_state = lstm_state.permute(2, 0, 1, 3)
+
+        return out.squeeze(1), lstm_state
 
     def forward(self, x):
         # import ipdb;ipdb.set_trace()
         flow = self.flowNet(x[0:2])
         flow_input = torch.cat( ( flow, x[2] ), dim=1 )        
-        pose = self.flowPoseNet( flow_input )
+        feature = self.flowPoseNet(flow_input)
 
-        return flow, pose
+        return feature
+    
 

@@ -70,8 +70,8 @@ class Parameters(object):
         self.vis_meas_covar_use_fixed = True
 
         # Training parameters
-        self.epochs = 200
-        self.batch_size = 16
+        self.epochs = 100
+        self.batch_size = 8
         self.pin_mem = True
         self.cache_image = False
         self.optimizer = torch.optim.Adam
@@ -191,8 +191,12 @@ class EUROCParams(Parameters):
     def __init__(self):
         Parameters.__init__(self)
 
-        self.all_seqs = ['MH_01', 'MH_02', 'MH_03', 'MH_04', 'MH_05', "V1_01", "V1_02", "V1_03", "V2_01", "V2_02"]
-        self.eval_seq = "MH_01"
+        # self.all_seqs = ['MH_01', 'MH_02', 'MH_03', 'MH_04', 'MH_05', "V1_01", "V1_02", "V1_03", "V2_01", "V2_02"]
+        # self.eval_seq = "V1_01"
+
+
+        self.all_seqs = ['MH_01', "V1_01", "V1_02"]
+        self.eval_seq = "V1_01"
 
         self.train_seqs = [x for x in self.all_seqs if not x == self.eval_seq]
         # self.train_seqs = ["V1_02"]
@@ -238,7 +242,7 @@ class EUROCParams(Parameters):
         self.gaussian_pdf_loss = True
 
         self.data_aug_transforms = AttrDict({
-            "enable": False,
+            "enable": True,
             "lr_flip": True,
             "ud_flip": False,
             "lrud_flip": False,
@@ -248,9 +252,71 @@ class EUROCParams(Parameters):
         self.focaly = 457.2959899902
         self.centerx = 367.2149963379
         self.centery = 248.3750000000
+
     def dataset(self):
         return "EUROC"
+class FLIGHTMAREParams(Parameters):
 
+    def __init__(self):
+        Parameters.__init__(self)
+
+        self.all_seqs = ['hex', 'I', 'loop', 'R', 'S', 'square', 'V']
+        self.eval_seq = 'hex'
+
+        self.train_seqs = [x for x in self.all_seqs if not x == self.eval_seq]
+        self.valid_seqs = [self.eval_seq]
+
+
+        self.img_w = 640
+        self.img_h = 448
+        self.img_means = (0,)
+        self.img_stds = (1,)
+        self.minus_point_5 = True
+
+        #
+        self.init_covar_diag_sqrt = np.array([1e-1, 1e-1, 1e-1,  # g
+                                              0, 0, 0, 0, 0, 0,  # C, r
+                                              1e-2, 1e-2, 1e-2,  # v
+                                              1e-1, 1e-1, 1e-1,  # bw
+                                              1e1, 1e1, 1e1])  # ba
+        self.init_covar_diag_eps = 1e-12
+        #
+        self.imu_noise_covar_diag = np.array([1e-3,  # w
+                                              1e-5,  # bw
+                                              1e-1,  # a
+                                              1e-2])  # ba
+        self.imu_noise_covar_beta = 4
+        self.imu_noise_covar_gamma = 1
+
+        self.vis_meas_fixed_covar = np.array([1e0, 1e0, 1e0,
+                                              1e0, 1e0, 1e0])
+        self.vis_meas_covar_init_guess = 1e1
+        self.vis_meas_covar_beta = 3
+        self.vis_meas_covar_gamma = 1
+
+        self.k1 = 100  # rel loss angle multiplier
+        self.k2 = 500.  # abs loss angle multiplier
+        self.k3 = {  # (1-k3)*abs + k3*rel weighting
+            0: 0.5,
+        }
+        self.k4 = 100.  # error scale for covar loss
+
+        self.gaussian_pdf_loss = True
+
+        self.data_aug_transforms = AttrDict({
+            "enable": True,
+            "lr_flip": True,
+            "ud_flip": False,
+            "lrud_flip": False,
+            "reverse": True,
+        })
+        self.focalx = 180.00000000000003 
+        self.focaly = 180.00000000000000
+        self.centerx = 320.00000000000000
+        self.centery = 180.00000000000000
+    def dataset(self):
+        return "FLIGHTMARE"
 
 # par = KITTIParams()
 par = EUROCParams()
+# par = FLIGHTMAREParams()
