@@ -191,12 +191,12 @@ class EUROCParams(Parameters):
     def __init__(self):
         Parameters.__init__(self)
 
-        # self.all_seqs = ['MH_01', 'MH_02', 'MH_03', 'MH_04', 'MH_05', "V1_01", "V1_02", "V1_03", "V2_01", "V2_02"]
+        self.all_seqs = ['MH_01', 'MH_02', 'MH_03', 'MH_04', 'MH_05', "V1_01", "V1_02", "V1_03", "V2_01", "V2_02"]
+        self.eval_seq = "V1_02"
+
+
+        # self.all_seqs = ['MH_01', "V1_01", "V1_02"]
         # self.eval_seq = "V1_01"
-
-
-        self.all_seqs = ['MH_01', "V1_01", "V1_02"]
-        self.eval_seq = "V1_01"
 
         self.train_seqs = [x for x in self.all_seqs if not x == self.eval_seq]
         # self.train_seqs = ["V1_02"]

@@ -308,7 +308,7 @@ class VONet(nn.Module):
         super(VONet, self).__init__()
 
         self.flowNet     = FlowNet().cuda()
-        self.flowPoseNet = FlowPoseNet().cuda()
+        # self.flowPoseNet = FlowPoseNet().cuda()
 
         tmp1 = Variable(torch.zeros(1, 6, imsize1, imsize2))
         tmp2 = Variable(torch.zeros(1,2,imsize1//4, imsize2//4))
@@ -397,9 +397,9 @@ class VONet(nn.Module):
         # import ipdb;ipdb.set_trace()
         flow = self.flowNet(x[0:2])
         flow_input = torch.cat( ( flow, x[2] ), dim=1 )        
-        feature = self.flowPoseNet(flow_input)
+        # feature = self.flowPoseNet(flow_input)
 
-        return feature
+        return flow_input
     
 
 class DeepVO(nn.Module):
